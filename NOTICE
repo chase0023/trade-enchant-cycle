@@ -1,0 +1,20 @@
+Trade & Enchant Cycle -- a native Rust mod for Horizon.
+
+This project contains no Minecraft code, assets or data. It is not an official
+Minecraft product and is not approved by or associated with Mojang or
+Microsoft. Playing it needs your own legally obtained copy of Minecraft: Java
+Edition, as Horizon itself does.
+
+It is not a Fabric, Forge, NeoForge, Bukkit or Spigot plugin, and it is not a
+Horizon WebAssembly content mod. It is a Horizon *native* mod: a source-mixin
+bundle (`bundle/`) that the Horizon launcher applies to Horizon's own Rust
+source and compiles into the game.
+
+The villager and enchanting rules it calls are Horizon's own port of vanilla's
+`AbstractVillager` / `trade_set` generation and `EnchantmentMenu` offer
+generation. This project does not re-implement or replace them; it reuses them
+and only decides when to roll again.
+
+Horizon (MIT) and horizon-mixins (MIT, by levzzz5154):
+  https://github.com/horizon-rust/horizon
+  https://github.com/horizon-rust/horizon-mixins

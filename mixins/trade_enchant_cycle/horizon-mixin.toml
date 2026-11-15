@@ -1,0 +1,221 @@
+# Trade & Enchant Cycle -- a native (source-mixin) mod for Horizon.
+#
+# Horizon native mods are not jars and not standalone dylibs: this manifest
+# names the game functions to hook and the Rust modules to add to the game's
+# own source. The launcher (or `horizon-mixins`) applies it and compiles the
+# game with the result; see README section 5.
+#
+# Pinned to the Nightly the project was inspected, applied and type-checked
+# on: nightly-2026-11-01-c9d474d (Minecraft Java 26.3, NATIVE_HOOKS_API = 80).
+# The mod reads game internals that the stable hook surface does not expose
+# (a villager's trade list, a guest's enchanting menu), so it pins the commit
+# instead of declaring `hooks`.
+[compatibility]
+horizon_revision = "c9d474dd9116e84c243f8992d75c11314df56f06"
+
+[mod]
+id = "trade_enchant_cycle"
+version = "1.1.0"
+priority = 120
+
+# ------------------------------------------------------------------ modules
+# Pure decisions and the config format (no game types; the same file is
+# compiled by `cargo test` through core/src/lib.rs).
+[[module]]
+id = "core"
+file = "crates/horizon-client/src/game.rs"
+name = "tec_core"
+source = "core.rs"
+
+# The config file in `config/`, plus the Options > Mods page.
+[[module]]
+id = "config"
+file = "crates/horizon-client/src/game.rs"
+name = "tec_config"
+source = "config.rs"
+
+# Hook entry points: feedback, debounce, confirmation, client/server wiring.
+[[module]]
+id = "hooks"
+file = "crates/horizon-client/src/game.rs"
+name = "tec_hooks"
+source = "hooks.rs"
+
+# Villager rerolls. Injected into trading.rs so it can call the game's own
+# `ensure_offers` and `offers_from_set` (AbstractVillager.getOffers /
+# addOffersFromTradeSet) instead of re-implementing trade generation.
+[[module]]
+id = "villager"
+file = "crates/horizon-client/src/game/trading.rs"
+name = "tec_villager"
+source = "villager.rs"
+
+# Merchant rerolls from the trading screen. Injected into lan_trading.rs so it
+# can reach a guest's open merchant session and `sendMerchantOffers`.
+[[module]]
+id = "merchant"
+file = "crates/horizon-client/src/game/lan_trading.rs"
+name = "tec_merchant"
+source = "merchant.rs"
+
+# Enchanting rerolls. Injected into lan_stations.rs so it can reach a guest's
+# open workstation menu and the game's own offer code (`enchant_offers`).
+[[module]]
+id = "enchanting"
+file = "crates/horizon-client/src/game/lan_stations.rs"
+name = "tec_enchanting"
+source = "enchanting.rs"
+
+# --------------------------------------------------------------- injections
+
+# A player right-clicked an entity, server-side, once per hand. This is where
+# a villager reroll starts (sneak + right-click by default) and where the
+# click is claimed so the trade screen does not also open.
+# Horizon API 29; the analogue of Fabric's UseEntityCallback and NeoForge's
+# PlayerInteractEvent.EntityInteract.
+[[injection]]
+id = "interact_entity"
+kind = "HEAD"
+target = "horizon_client::game::native_hooks::Game<'_>::native_interact_entity"
+helper = "interact.rs"
+bindings = [
+  { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
+  { name = "entity", ty = "i32", value = "entity" },
+  { name = "kind", ty = "&str", value = "kind" },
+  { name = "stack", ty = "Option<&horizon_client::items::ItemStack>", value = "stack" },
+  { name = "claimed", ty = "&mut bool", value = "&mut *claimed" },
+]
+
+# A key went down or up while a screen was open. The R shortcut lives on the
+# screen's own key hook below, which knows which screen is open and whether the
+# key is repeating; this one is kept for the in-frame station path, which opens
+# no server menu and so fires no screen key hook.
+[[injection]]
+id = "key"
+kind = "HEAD"
+target = "horizon_client::game::native_hooks::Game<'_>::native_key"
+helper = "key.rs"
+bindings = [
+  { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
+  { name = "key", ty = "&str", value = "key" },
+  { name = "pressed", ty = "bool", value = "pressed" },
+]
+
+# The open screen hears of a key press before it acts on it: this is where the
+# R shortcut is read, so it only fires (and is only cancelled) in the two
+# screens the mod owns, and `repeat` keeps a held key to one reroll. The
+# analogue of Fabric's ScreenKeyboardEvents.allowKeyPress.
+[[injection]]
+id = "screen_key_pressed_pre"
+kind = "HEAD"
+target = "horizon_client::game::native_hooks::Game<'_>::native_screen_key_pressed_pre"
+helper = "screen_key.rs"
+bindings = [
+  { name = "game", ty = "&crate::game::Game<'_>", value = "&*self" },
+  { name = "screen", ty = "&crate::game::native_hooks::NativeScreenView<'_>", value = "screen" },
+  { name = "key", ty = "&str", value = "key" },
+  { name = "repeat", ty = "bool", value = "repeat" },
+  { name = "canceled", ty = "&mut bool", value = "&mut *canceled" },
+]
+
+# The client half sends a reroll request; the server half hears it here
+# (Horizon API 40, mod messages). The request is treated as the player's own
+# input and re-checked on the server.
+[[injection]]
+id = "net_from_client"
+kind = "HEAD"
+target = "horizon_client::game::native_hooks::Game<'_>::native_net_from_client"
+helper = "net.rs"
+bindings = [
+  { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
+  { name = "player", ty = "u128", value = "player" },
+  { name = "channel", ty = "&str", value = "channel" },
+  { name = "data", ty = "&[u8]", value = "data" },
+]
+
+# The client tick sends what a click on the drawn button recorded.
+[[injection]]
+id = "tick"
+kind = "HEAD"
+target = "horizon_client::game::native_hooks::Game<'_>::native_tick"
+helper = "tick.rs"
+bindings = [
+  { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
+]
+
+# The open screen has drawn itself: draw the reroll bar under the panel's
+# own items (API 78).
+[[injection]]
+id = "screen_render_post"
+kind = "HEAD"
+target = "horizon_client::game::native_hooks::Game<'_>::native_screen_render_post"
+helper = "render.rs"
+bindings = [
+  { name = "game", ty = "&crate::game::Game<'_>", value = "&*self" },
+  { name = "batch", ty = "&mut horizon_client::hud::HudBatch", value = "&mut *batch" },
+  { name = "screen", ty = "&crate::game::native_hooks::NativeScreenView<'_>", value = "screen" },
+]
+
+# A mouse button went down over the open screen, before it does anything:
+# clicks inside the reroll button are taken by the mod (API 80). The hook is
+# `&self`, so it records the click and the tick above sends it.
+[[injection]]
+id = "screen_mouse_button_pressed_pre"
+kind = "HEAD"
+target = "horizon_client::game::native_hooks::Game<'_>::native_screen_mouse_button_pressed_pre"
+helper = "press.rs"
+bindings = [
+  { name = "game", ty = "&crate::game::Game<'_>", value = "&*self" },
+  { name = "screen", ty = "&crate::game::native_hooks::NativeScreenView<'_>", value = "screen" },
+  { name = "button", ty = "i32", value = "button" },
+  { name = "modifiers", ty = "u32", value = "modifiers" },
+  { name = "canceled", ty = "&mut bool", value = "&mut *canceled" },
+]
+
+# The release that ends a bar press is cancelled too, so the screen never sees
+# a release it did not see pressed: that would be a click into the void, and a
+# container screen throws the carried stack on one (AbstractContainerMenu
+# THROW).
+[[injection]]
+id = "screen_mouse_button_released_pre"
+kind = "HEAD"
+target = "horizon_client::game::native_hooks::Game<'_>::native_screen_mouse_button_released_pre"
+helper = "release.rs"
+bindings = [
+  { name = "game", ty = "&crate::game::Game<'_>", value = "&*self" },
+  { name = "screen", ty = "&crate::game::native_hooks::NativeScreenView<'_>", value = "screen" },
+  { name = "button", ty = "i32", value = "button" },
+  { name = "canceled", ty = "&mut bool", value = "&mut *canceled" },
+]
+
+# The Options > Mods row (the player's on/off switch) and the mod's settings.
+[[injection]]
+id = "mods"
+kind = "HEAD"
+target = "horizon_client::game::native_hooks::Game<'_>::native_mods"
+helper = "list.rs"
+bindings = [
+  { name = "mods", ty = "&mut Vec<crate::game::native_hooks::NativeMod>", value = "&mut *mods" },
+]
+
+[[injection]]
+id = "settings"
+kind = "HEAD"
+target = "horizon_client::game::native_hooks::Game<'_>::native_settings"
+helper = "settings.rs"
+bindings = [
+  { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
+  { name = "mod_id", ty = "&str", value = "mod_id" },
+  { name = "buttons", ty = "&mut Vec<String>", value = "&mut *buttons" },
+]
+
+[[injection]]
+id = "settings_click"
+kind = "HEAD"
+target = "horizon_client::game::native_hooks::Game<'_>::native_settings_click"
+helper = "click.rs"
+bindings = [
+  { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
+  { name = "mod_id", ty = "&str", value = "mod_id" },
+  { name = "button", ty = "usize", value = "button" },
+]

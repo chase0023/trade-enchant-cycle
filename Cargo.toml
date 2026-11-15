@@ -1,0 +1,21 @@
+[package]
+name = "tec-core"
+version = "1.1.0"
+edition = "2021"
+rust-version = "1.70"
+license = "MIT"
+description = "Pure decisions, config format and reroll planning of the Trade & Enchant Cycle native mod for Horizon"
+publish = false
+
+[lib]
+name = "tec_core"
+path = "core/src/lib.rs"
+
+# The library is the mod's own pure files, included by path; there are no
+# dependencies, so `cargo test` works offline. The native mod itself is built
+# by the Horizon launcher from `mixins/trade_enchant_cycle/` (README section 5),
+# package.
+[dependencies]
+
+[profile.test]
+opt-level = 0
