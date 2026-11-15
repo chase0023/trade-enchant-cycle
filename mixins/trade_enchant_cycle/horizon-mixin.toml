@@ -5,13 +5,16 @@
 # own source. The launcher (or `horizon-mixins`) applies it and compiles the
 # game with the result; see README section 5.
 #
-# Pinned to the Nightly the project was inspected, applied and type-checked
-# on: nightly-2026-11-01-c9d474d (Minecraft Java 26.3, NATIVE_HOOKS_API = 80).
+# Pinned to the newest Nightly at the time of writing (published 2026-11-13):
+# 9f42064 (Minecraft Java 26.3, NATIVE_HOOKS_API = 415), where the bundle is
+# applied and compiled by `native/tools/native.py check --horizon latest`.
+# The in-game session in README section 9 ran on the previous Nightly,
+# c9d474d (API 80); both Nightlies apply the same 11 injections.
 # The mod reads game internals that the stable hook surface does not expose
 # (a villager's trade list, a guest's enchanting menu), so it pins the commit
 # instead of declaring `hooks`.
 [compatibility]
-horizon_revision = "c9d474dd9116e84c243f8992d75c11314df56f06"
+horizon_revision = "9f42064c11efe7ef3e5ed2baad7ddc2a3b36eea0"
 
 [mod]
 id = "trade_enchant_cycle"

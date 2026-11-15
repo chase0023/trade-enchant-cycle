@@ -39,7 +39,7 @@ PROJECT_NAME = "trade-enchant-cycle"
 
 VERSION = "1.1.0"
 GAME = "26.3"
-HORIZON = "c9d474dd9116e84c243f8992d75c11314df56f06"
+HORIZON = "9f42064c11efe7ef3e5ed2baad7ddc2a3b36eea0"
 MIXINS = "0d6b103c70633d8fd9443d8d0acd3aadaacedb06"
 HOOKS = 80
 

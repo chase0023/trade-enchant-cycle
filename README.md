@@ -24,12 +24,15 @@ own source and compiles into the game. Java mod jars do not run there.
 * Version **1.1.0** — the UI fix release: the bar is a panel footer instead of
   an overlay inside the screen, **R** works with the default config, tooltips
   are never covered, and a bar click no longer throws the carried stack (§9).
-* Built, run and verified in game on **Horizon Nightly
-  `nightly-2026-11-01-c9d474d`** — commit
-  `c9d474dd9116e84c243f8992d75c11314df56f06`, Minecraft Java **26.3**,
-  `NATIVE_HOOKS_API = 80`, horizon-mixins **0.5.0**
-  (`0d6b103c70633d8fd9443d8d0acd3aadaacedb06`): both features were used on a
-  real world and did what they promise (§9).
+* Pinned to **Horizon Nightly `9f42064`** (published 2026-11-13) — commit
+  `9f42064c11efe7ef3e5ed2baad7ddc2a3b36eea0`, Minecraft Java **26.3**, hook points **80 or later** (the newest Nightly is 415),
+  horizon-mixins **0.5.0** (`0d6b103c70633d8fd9443d8d0acd3aadaacedb06`).
+  Applied and compiled there with the registry's own tool
+  (`native/tools/native.py check --horizon latest`), no warnings.
+* Built, run and verified in game on the previous Nightly,
+  **`nightly-2026-11-01-c9d474d`** (`NATIVE_HOOKS_API = 80`): both features
+  were used on a real world and did what they promise (§9). The two
+  Nightlies take the same 11 injections.
 * Licence: MIT. No Minecraft code, assets or data are included.
 
 ---
@@ -327,8 +330,8 @@ touching the other.
 ## 6. Requirements
 
 * Windows 10/11 x64, macOS on Apple Silicon, or Linux x86-64 with a Vulkan GPU.
-* The Horizon launcher, with Minecraft 26.3 prepared and the Nightly
-  **`nightly-2026-11-01-c9d474d`** installed.
+* The Horizon launcher, with Minecraft 26.3 prepared and the Nightly the mod
+  is pinned to (**`9f42064`**, published 2026-11-13; `c9d474d` also builds) installed.
 * `cargo test`: Rust stable ≥ 1.70 (the package has no dependencies).
 * The native build needs nothing else: the launcher downloads its pinned Rust
   1.99.1, MinGW-w64 on Windows, horizon-mixins and the Horizon source.
@@ -407,17 +410,17 @@ Then install the built game into a version folder:
 
 ```powershell
 $data = Join-Path $env:APPDATA "horizon-launcher"
-$base = Join-Path $data "versions\nightly-2026-11-01-c9d474d"
-$new  = Join-Path $data "versions\native-c9d474d-tec"
+$base = Join-Path $data "versions\nightly-2026-11-13-9f42064"
+$new  = Join-Path $data "versions\native-9f42064-tec"
 Copy-Item $base $new -Recurse
 Copy-Item C:\tec-build\target\release\horizon-client.exe "$new\horizon-client.exe" -Force
 @'
-{"base":"nightly-2026-11-01-c9d474d","horizon":"c9d474dd9116e84c243f8992d75c11314df56f06","horizon_mixins":"0d6b103c70633d8fd9443d8d0acd3aadaacedb06","rust":"1.99.1","mods":[{"id":"trade_enchant_cycle","version":"1.1.0"}]}
+{"base":"nightly-2026-11-13-9f42064","horizon":"9f42064c11efe7ef3e5ed2baad7ddc2a3b36eea0","horizon_mixins":"0d6b103c70633d8fd9443d8d0acd3aadaacedb06","rust":"1.99.1","mods":[{"id":"trade_enchant_cycle","version":"1.1.0"}]}
 '@ | Set-Content "$new\native-mods.json"
 New-Item "$new\.installed" -ItemType File -Force | Out-Null
 ```
 
-Select `native-c9d474d-tec` in the launcher's version picker.
+Select `native-9f42064-tec` in the launcher's version picker.
 
 ### 7.5 Install the prebuilt `.hnmod`
 
@@ -508,14 +511,18 @@ Because the last row is not part of the stable hook surface, the bundle
 
 ## 9. Tests performed (actual results)
 
-Environment: Horizon Nightly `nightly-2026-11-01-c9d474d`, Minecraft 26.3, the
-launcher's Rust 1.99.1 (`x86_64-pc-windows-gnu`), Windows 11, horizon-mixins
-0.5.0 rev `0d6b103c7063`.
+Environment for the in-game rows: Horizon Nightly
+`nightly-2026-11-01-c9d474d`, Minecraft 26.3, the launcher's Rust 1.99.1
+(`x86_64-pc-windows-gnu`), Windows 11, horizon-mixins 0.5.0 rev
+`0d6b103c7063`. The newest Nightly (`9f42064`, API 415) was checked by
+compilation only: applied and `cargo check`ed through
+`native/tools/native.py check --horizon latest`.
 
 | Check | Result |
 |---|---|
 | `cargo test --offline` (project root) | **34 passed, 0 failed** |
 | `horizon-mixins plan` against source `c9d474d…` | **ok** — 11 injections, 6 modules, 0 bridges/states |
+| `native/tools/native.py check --horizon latest` (`9f42064`, API 415) | **ok** — applied and compiled, `check: ok`, no warnings in the mod's files |
 | `horizon-mixins apply` to a space-free stage | **ok**, stage written |
 | `cargo check --locked --offline -p horizon-client --bin horizon-client` on the staged game | **passed**, no errors, no warnings |
 | `cargo test --locked --offline -p horizon-client --bin horizon-client tec_` | **6 passed, 0 failed** |
@@ -593,7 +600,8 @@ game's own log are the two places a failure will show.
 
 1. **Pinned to one Nightly.** The mod reads game internals the stable hook
    surface does not expose, so `horizon-mixin.toml` pins
-   `c9d474dd…`. Another Nightly needs a re-check (and possibly small changes in
+   `9f42064…`. It compiles on that Nightly and on `c9d474d`, where it
+   was run; another Nightly needs a re-check (and possibly small changes in
    `villager.rs` / `enchanting.rs`); the pure modules do not.
 2. **Remote servers:** no reroll. The villager needs the server's mobs and the
    enchanting seed lives on the server; a client cannot change either without
