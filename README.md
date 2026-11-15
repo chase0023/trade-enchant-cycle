@@ -302,6 +302,20 @@ trade-enchant-cycle/
 │   ├── trade_enchant_cycle-1.1.0.hnmod
 │   └── trade-enchant-cycle-1.1.0.zip
 ├── README.md  LICENSE  NOTICE
+├── assets/icon.png               # the icon the registry lists
+```
+
+The tree is the registry's own native-mod layout: `compatibility.json` next to
+`mixins/<id>/`, which is what Horizon's native tooling reads. `dist/*.hnmod` is
+not built by this repository — it is written by the registry's tool, so the
+published bytes are the reviewed bytes:
+
+```sh
+# in a clone of github.com/horizon-rust/horizon-mods, with this repo copied to
+# native/trade_enchant_cycle/
+python3 native/tools/native.py package trade_enchant_cycle
+cp native/target/trade_enchant_cycle-1.1.0.hnmod /path/to/this/repo/dist/
+python3 scripts/package.py     # proves the .hnmod is made from mixins/ and zips the source
 ```
 
 The two features are independent: each has its own module, its own config
